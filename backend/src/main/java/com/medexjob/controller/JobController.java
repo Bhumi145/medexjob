@@ -10,6 +10,7 @@ import com.medexjob.repository.EmployerRepository;
 import com.medexjob.repository.SubscriptionRepository;
 import com.medexjob.service.NotificationService;
 import com.medexjob.service.JobSearchService;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -38,14 +39,16 @@ public class JobController {
     private final SubscriptionRepository subscriptionRepository;
     private final NotificationService notificationService;
     private final JobSearchService jobSearchService;
+    private final PasswordEncoder passwordEncoder;
 
-    public JobController(JobRepository jobRepository, EmployerRepository employerRepository, UserRepository userRepository, SubscriptionRepository subscriptionRepository, NotificationService notificationService, JobSearchService jobSearchService) {
+    public JobController(JobRepository jobRepository, EmployerRepository employerRepository, UserRepository userRepository, SubscriptionRepository subscriptionRepository, NotificationService notificationService, JobSearchService jobSearchService, PasswordEncoder passwordEncoder) {
         this.jobRepository = jobRepository;
         this.employerRepository = employerRepository;
         this.userRepository = userRepository;
         this.subscriptionRepository = subscriptionRepository;
         this.notificationService = notificationService;
         this.jobSearchService = jobSearchService;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @GetMapping
@@ -678,12 +681,23 @@ public class JobController {
         job.setApplyLink(req.applyLink());
         job.setRequirements(req.requirements()); // Set requirements
         job.setBenefits(req.benefits()); // Set benefits
+        // Handle lastDate - required field, default to 30 days from now if not provided
         if (req.lastDate() != null && !req.lastDate().isBlank()) {
-            try { job.setLastDate(java.time.LocalDate.parse(req.lastDate())); } catch (Exception ignored) {}
+            try { 
+                job.setLastDate(java.time.LocalDate.parse(req.lastDate())); 
+            } catch (Exception e) {
+                // If parsing fails, set default to 30 days from now
+                job.setLastDate(java.time.LocalDate.now().plusDays(30));
+            }
+        } else {
+            // Default to 30 days from now if not provided
+            job.setLastDate(java.time.LocalDate.now().plusDays(30));
         }
-        // Contact details
-        job.setContactEmail(Optional.ofNullable(req.contactEmail()).orElse("noreply@medexjob.com"));
-        job.setContactPhone(Optional.ofNullable(req.contactPhone()).orElse(""));
+        // Contact details - check for null AND blank strings
+        String email = req.contactEmail();
+        job.setContactEmail(email != null && !email.isBlank() ? email : "noreply@medexjob.com");
+        String phone = req.contactPhone();
+        job.setContactPhone(phone != null && !phone.isBlank() ? phone : "0000000000");
     }
 
     private Employer resolveOrCreateEmployer(String organization, String type) {
@@ -713,7 +727,7 @@ public class JobController {
             dummyUser.setEmail(dummyEmail);
             dummyUser.setPhone("0000000000");
             dummyUser.setRole(User.UserRole.EMPLOYER); // Must be an EMPLOYER role
-            dummyUser.setPasswordHash("dummy_password_hash"); // Placeholder, should be properly hashed
+            dummyUser.setPasswordHash(passwordEncoder.encode("AdminCreated_" + System.currentTimeMillis())); // Properly BCrypt encoded
             return userRepository.save(dummyUser);
         });
         newEmployer.setUser(employerUser);
