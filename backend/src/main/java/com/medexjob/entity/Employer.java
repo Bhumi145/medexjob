@@ -66,6 +66,10 @@ public class Employer {
     @Column(name = "verification_status", nullable = false)
     private VerificationStatus verificationStatus = VerificationStatus.PENDING;
     
+    @Enumerated(EnumType.STRING)
+    @Column(name = "employer_status")
+    private EmployerStatus employerStatus = EmployerStatus.ACTIVE;
+    
     @Column(name = "verification_notes", columnDefinition = "TEXT")
     private String verificationNotes;
     
@@ -186,6 +190,14 @@ public class Employer {
         this.verificationStatus = verificationStatus;
     }
     
+    public EmployerStatus getEmployerStatus() {
+        return employerStatus;
+    }
+    
+    public void setEmployerStatus(EmployerStatus employerStatus) {
+        this.employerStatus = employerStatus;
+    }
+    
     public String getVerificationNotes() {
         return verificationNotes;
     }
@@ -225,6 +237,10 @@ public class Employer {
     
     public enum VerificationStatus {
         PENDING, APPROVED, REJECTED
+    }
+    
+    public enum EmployerStatus {
+        ACTIVE, DISCONTINUED
     }
 }
 

@@ -6,6 +6,7 @@ import {
   Route,
   useNavigate,
   useLocation,
+  useParams,
 } from "react-router-dom";
 import { useAuth } from "./contexts/AuthContext";
 import { createJob, uploadJobDocument, uploadJobImage } from "./api/jobs";
@@ -30,6 +31,7 @@ import { AdminJobManagementPage } from "./components/AdminJobManagementPage";
 import { JobPostingForm } from "./components/JobPostingForm";
 import { AdminUsersPage } from "./components/AdminUsersPage";
 import { EmployerVerificationPage } from "./components/EmployerVerificationPage";
+import { EmployerManagementPage } from "./components/EmployerManagementPage";
 import { AdminApplications } from "./components/AdminApplications";
 import { AdminNewsManagementPage } from "./components/AdminNewsManagementPage";
 import { AnalyticsDashboard } from "./components/AnalyticsDashboard";
@@ -43,6 +45,18 @@ import { AdminPricingManagement } from "./components/AdminPricingManagement";
 import { PricingPage } from "./components/PricingPage";
 import { EditJobPage } from "./components/EditJobPage";
 import { Toaster } from "./components/ui/sonner";
+
+// Wrapper component to extract employerId from URL params
+function EmployerManagementPageWrapper({
+  onNavigate,
+}: {
+  onNavigate: (page: string) => void;
+}) {
+  const { employerId } = useParams<{ employerId: string }>();
+  return (
+    <EmployerManagementPage onNavigate={onNavigate} employerId={employerId} />
+  );
+}
 
 function AppContent() {
   const navigate = useNavigate();
@@ -411,6 +425,12 @@ function AppContent() {
                 path="/admin-employer-verification"
                 element={
                   <EmployerVerificationPage onNavigate={handleNavigate} />
+                }
+              />
+              <Route
+                path="/employer-management/:employerId"
+                element={
+                  <EmployerManagementPageWrapper onNavigate={handleNavigate} />
                 }
               />
               <Route

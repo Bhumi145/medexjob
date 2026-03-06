@@ -26,6 +26,7 @@ export interface EmployerResponse {
   pincode?: string;
   isVerified: boolean;
   verificationStatus: 'pending' | 'approved' | 'rejected';
+  employerStatus?: 'active' | 'discontinued';
   verificationNotes?: string;
   verifiedAt?: string;
   createdAt: string;
@@ -126,5 +127,69 @@ export async function createEmployer(
     body: JSON.stringify(data),
   });
   if (!res.ok) throw new Error(`Failed to create employer (${res.status})`);
+  return res.json();
+}
+
+export async function approveEmployer(
+  id: string,
+  token: string,
+  notes?: string
+): Promise<EmployerResponse> {
+  const qs = new URLSearchParams();
+  if (notes) qs.set('notes', notes);
+
+  const res = await fetch(`${API_BASE}/employers/${id}/approve?${qs.toString()}`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+  if (!res.ok) throw new Error(`Failed to approve employer (${res.status})`);
+  return res.json();
+}
+
+export async function rejectEmployer(
+  id: string,
+  token: string,
+  notes?: string
+): Promise<EmployerResponse> {
+  const qs = new URLSearchParams();
+  if (notes) qs.set('notes', notes);
+
+  const res = await fetch(`${API_BASE}/employers/${id}/reject?${qs.toString()}`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+  if (!res.ok) throw new Error(`Failed to reject employer (${res.status})`);
+  return res.json();
+}
+
+export async function discontinueEmployer(
+  id: string,
+  token: string
+): Promise<EmployerResponse> {
+  const res = await fetch(`${API_BASE}/employers/${id}/discontinue`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+  if (!res.ok) throw new Error(`Failed to discontinue employer (${res.status})`);
+  return res.json();
+}
+
+export async function continueEmployer(
+  id: string,
+  token: string
+): Promise<EmployerResponse> {
+  const res = await fetch(`${API_BASE}/employers/${id}/continue`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+  if (!res.ok) throw new Error(`Failed to continue employer (${res.status})`);
   return res.json();
 }

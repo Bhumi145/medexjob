@@ -413,4 +413,23 @@ public class NotificationService {
             logger.error("❌ Error creating verification notification: {}", e.getMessage(), e);
         }
     }
+
+    /**
+     * Generic method to create a notification
+     * Used for employer status changes (discontinue/continue)
+     */
+    public void createNotification(UUID userId, String title, String message, String type, String relatedId) {
+        if (userId == null) {
+            logger.warn("⚠️ Cannot create notification: userId is null");
+            return;
+        }
+
+        try {
+            Notification notification = new Notification(userId, type, title, message);
+            notificationRepository.save(notification);
+            logger.info("🔔 Notification created for user: {} - type: {}", userId, type);
+        } catch (Exception e) {
+            logger.error("❌ Error creating notification: {}", e.getMessage(), e);
+        }
+    }
 }

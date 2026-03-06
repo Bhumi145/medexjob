@@ -711,6 +711,185 @@ public class EmployerController {
             System.err.println("Error getting verification details: " + e.getMessage());
         }
 
+        // Add employerStatus
+        try {
+            m.put("employerStatus",
+                    employer.getEmployerStatus() != null ? employer.getEmployerStatus().name().toLowerCase() : "active");
+        } catch (Exception e) {
+            System.err.println("Error getting employer status: " + e.getMessage());
+            m.put("employerStatus", "active");
+        }
+
         return m;
+    }
+
+    /**
+     * Approve an employer
+     * PUT /api/employers/{id}/approve
+     */
+    @PutMapping("/{id}/approve")
+    @Transactional
+    public ResponseEntity<?> approveEmployer(@PathVariable UUID id, @RequestParam(required = false) String notes) {
+        try {
+            Optional<Employer> employerOpt = employerRepository.findById(id);
+            if (employerOpt.isEmpty()) {
+                return ResponseEntity.status(404).body(Map.of("error", "Employer not found"));
+            }
+
+            Employer employer = employerOpt.get();
+            employer.setVerificationStatus(Employer.VerificationStatus.APPROVED);
+            employer.setIsVerified(true);
+            employer.setVerifiedAt(LocalDateTime.now());
+            employer.setEmployerStatus(Employer.EmployerStatus.ACTIVE);
+            if (notes != null && !notes.trim().isEmpty()) {
+                employer.setVerificationNotes(notes);
+            }
+
+            Employer saved = employerRepository.save(employer);
+
+            // Send notification
+            try {
+                if (saved.getUser() != null) {
+                    notificationService.notifyEmployerVerification(
+                            saved.getUser().getId(),
+                            saved.getCompanyName(),
+                            "APPROVED",
+                            saved.getId());
+                }
+            } catch (Exception e) {
+                System.err.println("Warning: Failed to send notification: " + e.getMessage());
+            }
+
+            return ResponseEntity.ok(toResponse(saved));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to approve employer: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Reject an employer
+     * PUT /api/employers/{id}/reject
+     */
+    @PutMapping("/{id}/reject")
+    @Transactional
+    public ResponseEntity<?> rejectEmployer(@PathVariable UUID id, @RequestParam(required = false) String notes) {
+        try {
+            Optional<Employer> employerOpt = employerRepository.findById(id);
+            if (employerOpt.isEmpty()) {
+                return ResponseEntity.status(404).body(Map.of("error", "Employer not found"));
+            }
+
+            Employer employer = employerOpt.get();
+            employer.setVerificationStatus(Employer.VerificationStatus.REJECTED);
+            employer.setIsVerified(false);
+            if (notes != null && !notes.trim().isEmpty()) {
+                employer.setVerificationNotes(notes);
+            }
+
+            Employer saved = employerRepository.save(employer);
+
+            // Send notification
+            try {
+                if (saved.getUser() != null) {
+                    notificationService.notifyEmployerVerification(
+                            saved.getUser().getId(),
+                            saved.getCompanyName(),
+                            "REJECTED",
+                            saved.getId());
+                }
+            } catch (Exception e) {
+                System.err.println("Warning: Failed to send notification: " + e.getMessage());
+            }
+
+            return ResponseEntity.ok(toResponse(saved));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to reject employer: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Discontinue an employer
+     * PUT /api/employers/{id}/discontinue
+     */
+    @PutMapping("/{id}/discontinue")
+    @Transactional
+    public ResponseEntity<?> discontinueEmployer(@PathVariable UUID id) {
+        try {
+            Optional<Employer> employerOpt = employerRepository.findById(id);
+            if (employerOpt.isEmpty()) {
+                return ResponseEntity.status(404).body(Map.of("error", "Employer not found"));
+            }
+
+            Employer employer = employerOpt.get();
+            
+            // Only approved employers can be discontinued
+            if (employer.getVerificationStatus() != Employer.VerificationStatus.APPROVED) {
+                return ResponseEntity.status(400).body(Map.of("error", "Only approved employers can be discontinued"));
+            }
+
+            employer.setEmployerStatus(Employer.EmployerStatus.DISCONTINUED);
+            Employer saved = employerRepository.save(employer);
+
+            // Send notification
+            try {
+                if (saved.getUser() != null) {
+                    notificationService.createNotification(
+                            saved.getUser().getId(),
+                            "Employer Account Discontinued",
+                            "Your employer account for " + saved.getCompanyName() + " has been discontinued by admin.",
+                            "employer_status",
+                            saved.getId().toString());
+                }
+            } catch (Exception e) {
+                System.err.println("Warning: Failed to send notification: " + e.getMessage());
+            }
+
+            return ResponseEntity.ok(toResponse(saved));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to discontinue employer: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Continue/Reactivate an employer
+     * PUT /api/employers/{id}/continue
+     */
+    @PutMapping("/{id}/continue")
+    @Transactional
+    public ResponseEntity<?> continueEmployer(@PathVariable UUID id) {
+        try {
+            Optional<Employer> employerOpt = employerRepository.findById(id);
+            if (employerOpt.isEmpty()) {
+                return ResponseEntity.status(404).body(Map.of("error", "Employer not found"));
+            }
+
+            Employer employer = employerOpt.get();
+            
+            // Only approved employers can be continued
+            if (employer.getVerificationStatus() != Employer.VerificationStatus.APPROVED) {
+                return ResponseEntity.status(400).body(Map.of("error", "Only approved employers can be reactivated"));
+            }
+
+            employer.setEmployerStatus(Employer.EmployerStatus.ACTIVE);
+            Employer saved = employerRepository.save(employer);
+
+            // Send notification
+            try {
+                if (saved.getUser() != null) {
+                    notificationService.createNotification(
+                            saved.getUser().getId(),
+                            "Employer Account Reactivated",
+                            "Your employer account for " + saved.getCompanyName() + " has been reactivated by admin.",
+                            "employer_status",
+                            saved.getId().toString());
+                }
+            } catch (Exception e) {
+                System.err.println("Warning: Failed to send notification: " + e.getMessage());
+            }
+
+            return ResponseEntity.ok(toResponse(saved));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to continue employer: " + e.getMessage()));
+        }
     }
 }
