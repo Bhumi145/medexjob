@@ -833,11 +833,15 @@ public class JobController {
             // Default to 30 days from now if not provided
             job.setLastDate(java.time.LocalDate.now().plusDays(30));
         }
-        // Contact details - check for null AND blank strings
+        // Contact details - check for null AND blank strings, validate email format
         String email = req.contactEmail();
-        job.setContactEmail(email != null && !email.isBlank() ? email : "noreply@medexjob.com");
+        if (email != null && !email.isBlank() && email.trim().matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")) {
+            job.setContactEmail(email.trim());
+        } else {
+            job.setContactEmail("noreply@medexjob.com");
+        }
         String phone = req.contactPhone();
-        job.setContactPhone(phone != null && !phone.isBlank() ? phone : "0000000000");
+        job.setContactPhone(phone != null && !phone.isBlank() ? phone.trim() : "0000000000");
     }
 
     // Helper: map request onto entity for UPDATE - preserves existing values when request fields are null/empty
@@ -921,12 +925,24 @@ public class JobController {
                 logger.warn("Failed to parse lastDate: {}", req.lastDate());
             }
         }
-        // Contact details - only update if provided
+        // Contact details - only update if provided and validate email format
         if (req.contactEmail() != null && !req.contactEmail().isBlank()) {
-            job.setContactEmail(req.contactEmail());
+            String email = req.contactEmail().trim();
+            if (email.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")) {
+                job.setContactEmail(email);
+            }
+            // If invalid email, keep existing value
+        }
+        // Fix empty contactEmail from existing data
+        if (job.getContactEmail() == null || job.getContactEmail().isBlank()) {
+            job.setContactEmail("noreply@medexjob.com");
         }
         if (req.contactPhone() != null && !req.contactPhone().isBlank()) {
-            job.setContactPhone(req.contactPhone());
+            job.setContactPhone(req.contactPhone().trim());
+        }
+        // Fix empty contactPhone from existing data
+        if (job.getContactPhone() == null || job.getContactPhone().isBlank()) {
+            job.setContactPhone("0000000000");
         }
     }
 

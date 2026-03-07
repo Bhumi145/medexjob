@@ -558,13 +558,19 @@ public class AdminJobController {
             job.setLastDate(java.time.LocalDate.now().plusDays(30));
         }
         if (req.contactEmail() != null && !req.contactEmail().isBlank()) {
-            job.setContactEmail(req.contactEmail());
-        } else if (job.getContactEmail() == null) {
+            // Validate email format before setting
+            String email = req.contactEmail().trim();
+            if (email.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")) {
+                job.setContactEmail(email);
+            } else {
+                job.setContactEmail("noreply@medexjob.com");
+            }
+        } else if (job.getContactEmail() == null || job.getContactEmail().isBlank()) {
             job.setContactEmail("noreply@medexjob.com");
         }
         if (req.contactPhone() != null && !req.contactPhone().isBlank()) {
-            job.setContactPhone(req.contactPhone());
-        } else if (job.getContactPhone() == null) {
+            job.setContactPhone(req.contactPhone().trim());
+        } else if (job.getContactPhone() == null || job.getContactPhone().isBlank()) {
             job.setContactPhone("0000000000");
         }
         if (req.pdfUrl() != null) {

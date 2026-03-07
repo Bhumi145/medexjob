@@ -88,11 +88,23 @@ public class GlobalExceptionHandler {
         // Check if it's a common exception type and provide meaningful message
         String errorMessage = "An unexpected error occurred.";
         String errorType = ex.getClass().getSimpleName();
+        Map<String, String> fieldErrors = new HashMap<>();
         
         if (ex instanceof org.springframework.dao.DataIntegrityViolationException) {
             errorMessage = "Data integrity violation. This may be due to duplicate data or invalid reference.";
-        } else if (ex instanceof org.springframework.transaction.TransactionSystemException) {
-            errorMessage = "Database transaction error. Please check your input and try again.";
+        } else if (ex instanceof org.springframework.transaction.TransactionSystemException txEx) {
+            // Extract ConstraintViolationException details
+            Throwable cause = txEx.getRootCause();
+            if (cause instanceof jakarta.validation.ConstraintViolationException cve) {
+                for (jakarta.validation.ConstraintViolation<?> violation : cve.getConstraintViolations()) {
+                    String field = violation.getPropertyPath().toString();
+                    String message = violation.getMessage();
+                    fieldErrors.put(field, message);
+                }
+                errorMessage = "Validation failed for fields: " + String.join(", ", fieldErrors.keySet());
+            } else {
+                errorMessage = "Database transaction error. Please check your input and try again.";
+            }
         } else if (ex instanceof java.util.NoSuchElementException) {
             errorMessage = "The requested resource was not found.";
         } else if (ex instanceof IllegalArgumentException) {
@@ -102,6 +114,9 @@ public class GlobalExceptionHandler {
         Map<String, Object> response = new HashMap<>();
         response.put("error", errorMessage);
         response.put("type", errorType);
+        if (!fieldErrors.isEmpty()) {
+            response.put("fieldErrors", fieldErrors);
+        }
         
         return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
     }
